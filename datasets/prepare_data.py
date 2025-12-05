@@ -69,21 +69,22 @@ spam	Make money from your mobile! Up to 750 pounds per week by working for SMS c
 spam	Our brand new mobile music service is now available for you. It has free credit and will be sent to you completely FREE. Respond 'FREE' or 'STOP' on 8007 1919 16
 ham	Yeh. You'll be able to see me perform though I guess that's not much consolation for you."""
 
+
 def create_sample_dataset():
     """Create a sample dataset file"""
     import os
-    
+
     datasets_dir = os.path.join(os.path.dirname(__file__), '..', 'datasets')
     os.makedirs(datasets_dir, exist_ok=True)
-    
+
     filepath = os.path.join(datasets_dir, 'spam_sample.txt')
-    
+
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(SAMPLE_DATA)
-    
+
     print(f"Sample dataset created at: {filepath}")
     return filepath
 
+
 if __name__ == '__main__':
     create_sample_dataset()
-
