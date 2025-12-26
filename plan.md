@@ -7,7 +7,8 @@ This document outlines a detailed, phased development plan to transform the curr
 ### Current State
 - ✅ Text spam detection (ML-based)
 - ✅ Voice spam detection (speech-to-text + ML)
-- ✅ FastAPI REST service
+- ✅ Node.js/Express backend API
+- ✅ Python FastAPI ML service
 - ✅ Basic feature extraction and explainability
 
 ### Target State
@@ -23,34 +24,71 @@ This document outlines a detailed, phased development plan to transform the curr
 
 ## 🏗️ Architecture Overview
 
+### Architecture Pattern
+The system follows a **microservices architecture** with clear separation of concerns:
+
+1. **Frontend** (React/Vue.js/Flutter) - User interface and visualization
+2. **Node.js Backend API** (Express.js) - Main API server handling all frontend requests
+   - Handles authentication, authorization, validation
+   - Manages business logic and data persistence
+   - Orchestrates calls to ML service
+3. **Python ML Service** (FastAPI) - Dedicated ML inference service
+   - Receives requests from Node.js backend
+   - Executes ML models for threat detection
+   - Returns predictions and analysis results
+4. **Database** (PostgreSQL) - Primary data storage (accessed via Node.js backend)
+5. **Cache** (Redis) - Caching layer
+6. **Message Queue** (RabbitMQ/Kafka) - Async task processing
+
+**Communication Flow:**
+```
+Frontend → Node.js Backend → Python ML Service → Results → Node.js Backend → Frontend
+                ↓
+          PostgreSQL Database
+```
+
 ### System Components
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend Dashboard                        │
-│         (React/Vue.js - Real-time Threat Visualization)     │
+│         (React/Vue.js/Flutter - Real-time Threat Visualization)│
 └──────────────────────┬──────────────────────────────────────┘
-                       │
+                       │ HTTP/REST API
 ┌──────────────────────▼──────────────────────────────────────┐
 │              API Gateway / Load Balancer                     │
 │              (Authentication, Rate Limiting)                 │
 └──────────────────────┬──────────────────────────────────────┘
                        │
-        ┌──────────────┼──────────────┐
-        │              │              │
-┌───────▼──────┐ ┌─────▼──────┐ ┌───▼──────────────┐
-│  Core API    │ │  ML Engine  │ │  Data Pipeline   │
-│  (FastAPI)   │ │  (PyTorch/  │ │  (Kafka/RabbitMQ)│
-│              │ │  TensorFlow)│ │                  │
-└───────┬──────┘ └─────┬──────┘ └───┬──────────────┘
-        │              │              │
-        └──────────────┼──────────────┘
-                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│              Node.js Backend API (Express)                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   Routes &   │  │  Controllers │  │  Middleware  │     │
+│  │  Endpoints   │  │  & Services  │  │  (Auth, etc) │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└───────┬──────────────────────┬──────────────────────────────┘
+        │                      │
+        │ HTTP/REST            │ Message Queue
+        │                      │
+┌───────▼──────────┐  ┌────────▼──────────┐  ┌──────────────┐
+│  Python ML       │  │  Data Pipeline    │  │  Background  │
+│  Service         │  │  (Kafka/RabbitMQ)  │  │  Workers     │
+│  (FastAPI)       │  │                    │  │  (Node.js)   │
+│  ┌────────────┐  │  └────────────────────┘  └──────────────┘
+│  │ ML Models  │  │
+│  │ (PyTorch/  │  │
+│  │ TensorFlow)│  │
+│  └────────────┘  │
+└──────────────────┘
+        │
+        └──────────────┬──────────────┐
+                       │              │
         ┌──────────────┼──────────────┐
         │              │              │
 ┌───────▼──────┐ ┌─────▼──────┐ ┌───▼──────────────┐
 │  Threat      │ │  Network   │ │  File Analysis   │
 │  Detectors   │ │  Monitor   │ │  Engine          │
+│  (Python)    │ │  (Python)  │ │  (Python)        │
 └───────┬──────┘ └─────┬──────┘ └───┬──────────────┘
         │              │              │
         └──────────────┼──────────────┘
@@ -73,52 +111,76 @@ This document outlines a detailed, phased development plan to transform the curr
 **Tasks:**
 - [ ] Create modular directory structure:
   ```
-  ai-anti-spam-shield-service-model/
-  ├── app/
-  │   ├── api/                    # API routes and endpoints
-  │   │   ├── v1/
-  │   │   │   ├── text.py
-  │   │   │   ├── voice.py
-  │   │   │   ├── network.py
-  │   │   │   ├── files.py
-  │   │   │   └── behavior.py
-  │   │   └── middleware/
-  │   ├── core/                   # Core configuration
-  │   │   ├── config.py
-  │   │   ├── security.py
-  │   │   └── logging.py
-  │   ├── models/                 # ML models
-  │   │   ├── text_classifier/
-  │   │   ├── network_analyzer/
-  │   │   ├── file_scanner/
-  │   │   └── behavior_analyzer/
-  │   ├── detectors/              # Threat detection modules
-  │   │   ├── spam_detector.py
-  │   │   ├── phishing_detector.py
-  │   │   ├── malware_detector.py
-  │   │   ├── intrusion_detector.py
-  │   │   └── anomaly_detector.py
-  │   ├── services/               # Business logic
-  │   │   ├── threat_intelligence.py
-  │   │   ├── incident_response.py
-  │   │   └── alerting.py
-  │   ├── database/               # Database models and migrations
-  │   │   ├── models.py
-  │   │   └── migrations/
-  │   ├── utils/                  # Utility functions
-  │   │   ├── preprocessing.py
-  │   │   ├── feature_extraction.py
-  │   │   └── validators.py
-  │   └── main.py
-  ├── tests/                      # Test suite
+  ai-anti-spam-shield/
+  ├── backend/                    # Node.js Backend API
+  │   ├── src/
+  │   │   ├── routes/             # API routes
+  │   │   │   ├── v1/
+  │   │   │   │   ├── text.js
+  │   │   │   │   ├── voice.js
+  │   │   │   │   ├── network.js
+  │   │   │   │   ├── files.js
+  │   │   │   │   ├── behavior.js
+  │   │   │   │   └── incidents.js
+  │   │   │   └── middleware/
+  │   │   ├── controllers/        # Request handlers
+  │   │   ├── services/           # Business logic
+  │   │   │   ├── mlService.js    # Calls Python ML service
+  │   │   │   ├── threatIntelligence.js
+  │   │   │   ├── incidentResponse.js
+  │   │   │   └── alerting.js
+  │   │   ├── models/             # Database models (Prisma)
+  │   │   ├── middleware/         # Auth, validation, etc.
+  │   │   ├── utils/              # Utility functions
+  │   │   ├── config/             # Configuration
+  │   │   └── app.js              # Express app setup
+  │   ├── prisma/                 # Prisma schema & migrations
+  │   ├── tests/
+  │   └── package.json
+  │
+  ├── ai-service/                 # Python ML Service (FastAPI)
+  │   ├── app/
+  │   │   ├── api/                # ML API endpoints
+  │   │   │   ├── v1/
+  │   │   │   │   ├── text.py
+  │   │   │   │   ├── voice.py
+  │   │   │   │   ├── network.py
+  │   │   │   │   ├── files.py
+  │   │   │   │   └── behavior.py
+  │   │   ├── core/               # Core configuration
+  │   │   │   ├── config.py
+  │   │   │   └── logging.py
+  │   │   ├── models/             # ML models
+  │   │   │   ├── text_classifier/
+  │   │   │   ├── network_analyzer/
+  │   │   │   ├── file_scanner/
+  │   │   │   └── behavior_analyzer/
+  │   │   ├── detectors/          # Threat detection modules
+  │   │   │   ├── spam_detector.py
+  │   │   │   ├── phishing_detector.py
+  │   │   │   ├── malware_detector.py
+  │   │   │   ├── intrusion_detector.py
+  │   │   │   └── anomaly_detector.py
+  │   │   ├── utils/              # Utility functions
+  │   │   │   ├── preprocessing.py
+  │   │   │   ├── feature_extraction.py
+  │   │   │   └── validators.py
+  │   │   └── main.py
+  │   ├── tests/
+  │   └── requirements.txt
+  │
+  ├── frontend/                   # Frontend (React/Vue.js)
+  ├── tests/                      # Integration tests
   ├── scripts/                    # Utility scripts
   ├── docs/                       # Documentation
-  └── deployments/                # Deployment configs
+  └── deployments/                # Deployment configs (Docker, K8s)
   ```
 
-- [ ] Refactor existing code into new structure
+- [ ] Refactor existing Node.js backend code into new structure
+- [ ] Refactor existing Python ML service code into new structure
 - [ ] Set up configuration management (environment variables, config files)
 - [ ] Implement logging framework (structured logging with levels)
+- [ ] Set up communication between Node.js backend and Python ML service
 
 **Deliverables:**
 - Reorganized project structure
@@ -208,9 +270,10 @@ This document outlines a detailed, phased development plan to transform the curr
   );
   ```
 
-- [ ] Set up database migrations (Alembic)
-- [ ] Create database connection pooling
-- [ ] Implement database models using SQLAlchemy ORM
+- [ ] Set up database migrations (Prisma for Node.js backend)
+- [ ] Create database connection pooling (Node.js backend)
+- [ ] Implement database models using Prisma ORM (Node.js backend)
+- [ ] Set up database access from Python ML service if needed
 
 **Deliverables:**
 - Database schema
@@ -220,29 +283,40 @@ This document outlines a detailed, phased development plan to transform the curr
 ---
 
 ### 1.3 Enhanced API Architecture
-**Goal:** Expand API with versioning, authentication, and new endpoints
+**Goal:** Expand Node.js backend API with versioning, authentication, and new endpoints
 
 **Tasks:**
-- [ ] Implement API versioning (v1, v2)
-- [ ] Add authentication/authorization:
+- [ ] Implement API versioning in Node.js backend (v1, v2)
+- [ ] Add authentication/authorization (Node.js backend):
   - JWT token-based auth
   - API key support
   - Role-based access control (RBAC)
-- [ ] Add rate limiting middleware
-- [ ] Implement request validation and sanitization
-- [ ] Add API documentation (OpenAPI/Swagger)
-- [ ] Create new endpoints:
-  - `/api/v1/threats` - List/search threats
-  - `/api/v1/threats/{id}` - Get threat details
-  - `/api/v1/network/monitor` - Network monitoring
-  - `/api/v1/files/scan` - File scanning
-  - `/api/v1/incidents` - Incident management
-  - `/api/v1/analytics` - Analytics and statistics
+  - Refresh token mechanism
+- [ ] Add rate limiting middleware (Express rate limiter)
+- [ ] Implement request validation and sanitization (express-validator, joi)
+- [ ] Add API documentation (Swagger/OpenAPI for Node.js)
+- [ ] Create new Node.js backend endpoints:
+  - `GET /api/v1/threats` - List/search threats
+  - `GET /api/v1/threats/:id` - Get threat details
+  - `POST /api/v1/network/monitor` - Network monitoring
+  - `POST /api/v1/files/scan` - File scanning
+  - `GET/POST /api/v1/incidents` - Incident management
+  - `GET /api/v1/analytics` - Analytics and statistics
+- [ ] Set up HTTP client in Node.js backend to call Python ML service
+- [ ] Implement error handling and retry logic for ML service calls
 
 **Deliverables:**
-- Enhanced API with authentication
+- Enhanced Node.js backend API with authentication
 - New endpoint structure
 - API documentation
+- Integration layer between Node.js backend and Python ML service
+
+**Architecture Note:**
+- **Node.js Backend** receives all HTTP requests from frontend
+- **Node.js Backend** handles authentication, authorization, validation, and business logic
+- **Node.js Backend** calls **Python ML Service** via HTTP REST API for ML inference
+- **Python ML Service** is a separate microservice focused solely on ML model execution
+- Communication pattern: `Frontend → Node.js Backend → Python ML Service → Database`
 
 ---
 
@@ -492,22 +566,26 @@ This document outlines a detailed, phased development plan to transform the curr
 **Goal:** Create API for file scanning
 
 **Tasks:**
-- [ ] Implement file upload endpoint:
-  - Multi-file upload support
+- [ ] Implement file upload endpoint in Node.js backend:
+  - Multi-file upload support (using multer or similar)
   - File size limits
   - File type restrictions
-  - Virus scanning before storage
-- [ ] Create scanning queue:
-  - Asynchronous scanning
+  - Initial validation before forwarding to ML service
+- [ ] Create scanning queue (Node.js backend):
+  - Asynchronous scanning using message queue (RabbitMQ/Kafka)
   - Priority queue (by file size, type)
-  - Retry mechanism
-- [ ] Add scanning results storage:
-  - Store scan results
+  - Retry mechanism for ML service calls
+- [ ] Implement Node.js backend → Python ML service integration:
+  - HTTP client to call Python ML service `/api/v1/files/scan` endpoint
+  - File forwarding to ML service
+  - Result handling and error management
+- [ ] Add scanning results storage (Node.js backend):
+  - Store scan results in PostgreSQL via Prisma
   - Generate reports
   - Historical scan data
 - [ ] Implement real-time scanning:
-  - WebSocket for progress updates
-  - Streaming results
+  - WebSocket support in Node.js backend for progress updates
+  - Streaming results to frontend
 
 **Deliverables:**
 - File scanning API
@@ -996,25 +1074,30 @@ This document outlines a detailed, phased development plan to transform the curr
 
 **Tasks:**
 - [ ] Unit testing:
-  - Test coverage > 80%
+  - Node.js backend: Jest tests for controllers, services, utilities
+  - Python ML service: pytest tests for ML models, detectors, utilities
+  - Test coverage > 80% for both services
   - Mock external dependencies
   - Test edge cases
 - [ ] Integration testing:
-  - API integration tests
-  - Database integration tests
-  - External service integration tests
+  - Node.js backend API integration tests (Supertest)
+  - Database integration tests (Prisma)
+  - Node.js backend → Python ML service integration tests
+  - External service integration tests (threat intelligence APIs)
 - [ ] End-to-end testing:
+  - Frontend → Node.js backend → Python ML service flow
   - User workflow tests
   - Threat detection flow tests
   - Incident response flow tests
 - [ ] Performance testing:
-  - Load testing
+  - Load testing (Node.js backend API)
+  - ML service inference performance
   - Stress testing
   - Endurance testing
 - [ ] Security testing:
   - Penetration testing
   - Vulnerability scanning
-  - Security code review
+  - Security code review (both Node.js and Python)
 
 **Deliverables:**
 - Test suite
@@ -1028,23 +1111,22 @@ This document outlines a detailed, phased development plan to transform the curr
 
 **Tasks:**
 - [ ] Code quality tools:
-  - Linting (pylint, flake8)
-  - Type checking (mypy)
-  - Code formatting (black)
-  - Complexity analysis
+  - Node.js backend: ESLint, Prettier, TypeScript (optional)
+  - Python ML service: pylint, flake8, black, mypy
+  - Complexity analysis for both
 - [ ] Code review process:
   - Pull request reviews
   - Automated checks
   - Documentation requirements
 - [ ] Continuous integration:
-  - CI/CD pipeline
-  - Automated testing
-  - Automated deployment
+  - CI/CD pipeline for both Node.js backend and Python ML service
+  - Automated testing (Jest for Node.js, pytest for Python)
+  - Automated deployment (Docker containers)
 - [ ] Documentation:
-  - API documentation
-  - Code documentation
+  - API documentation (Swagger/OpenAPI for Node.js backend)
+  - Code documentation (JSDoc for Node.js, docstrings for Python)
   - User guides
-  - Architecture documentation
+  - Architecture documentation (including Node.js ↔ Python communication)
 
 **Deliverables:**
 - QA processes
@@ -1060,22 +1142,25 @@ This document outlines a detailed, phased development plan to transform the curr
 
 **Tasks:**
 - [ ] Containerization:
-  - Docker images
-  - Multi-stage builds
+  - Docker images for Node.js backend
+  - Docker images for Python ML service
+  - Multi-stage builds for both
   - Image optimization
 - [ ] Orchestration:
-  - Kubernetes deployment
+  - Kubernetes deployment for both services
   - Helm charts
-  - Service definitions
+  - Service definitions and service discovery
+  - Configure Node.js backend to discover Python ML service
 - [ ] Infrastructure as Code:
   - Terraform/CloudFormation
   - Infrastructure automation
   - Environment management
 - [ ] Deployment automation:
-  - CI/CD pipelines
+  - CI/CD pipelines for both services
   - Blue-green deployment
   - Canary releases
   - Rollback procedures
+  - Health checks for both services
 
 **Deliverables:**
 - Deployment configurations
@@ -1119,10 +1204,18 @@ This document outlines a detailed, phased development plan to transform the curr
 ## 📊 Technology Stack Recommendations
 
 ### Backend
-- **Framework:** FastAPI (current) + Celery for async tasks
+- **Main API:** Node.js + Express (handles frontend requests)
+  - Express.js framework
+  - Prisma ORM for database access
+  - JWT authentication
+  - Rate limiting and middleware
+- **ML Service:** Python + FastAPI (separate ML service)
+  - FastAPI framework
+  - PyTorch or TensorFlow for deep learning
+  - scikit-learn for traditional ML
+  - Celery for async ML tasks
 - **Database:** PostgreSQL (primary), Redis (cache), Elasticsearch (logs)
-- **Message Queue:** RabbitMQ or Apache Kafka
-- **ML Framework:** PyTorch or TensorFlow, scikit-learn
+- **Message Queue:** RabbitMQ or Apache Kafka (for async processing)
 - **ML Serving:** TorchServe, TensorFlow Serving, or ONNX Runtime
 
 ### Frontend
@@ -1203,11 +1296,24 @@ This document outlines a detailed, phased development plan to transform the curr
 - "Machine Learning for Network Security" - Various authors
 
 ### Tools & Libraries
+
+**Node.js Backend:**
+- **Framework:** Express.js, Fastify (optional)
+- **ORM:** Prisma
+- **Auth:** jsonwebtoken, bcryptjs
+- **Validation:** express-validator, joi
+- **HTTP Client:** axios, node-fetch (for calling Python ML service)
+- **Testing:** Jest, Supertest
+- **Logging:** Winston, Pino
+
+**Python ML Service:**
+- **Framework:** FastAPI
 - **NLP:** Transformers (Hugging Face), spaCy, NLTK
 - **ML:** scikit-learn, XGBoost, LightGBM
 - **Deep Learning:** PyTorch, TensorFlow, Keras
-- **Network:** Scapy, dpkt, pypcap
+- **Network Analysis:** Scapy, dpkt, pypcap
 - **File Analysis:** pefile, yara-python, ssdeep
+- **Async Tasks:** Celery, Redis
 
 ---
 
