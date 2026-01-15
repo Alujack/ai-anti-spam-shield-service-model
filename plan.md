@@ -1,383 +1,74 @@
-# 🛡️ AI Anti-Spam Shield - Comprehensive Cybersecurity Platform Development Plan
+# 🤖 AI Anti-Spam Shield ML Service - Development Plan
 
 ## 📋 Executive Summary
 
-This document outlines a detailed, phased development plan to transform the current AI Anti-Spam Shield from a text/voice spam detection system into a comprehensive **Cybersecurity Threat Detection and Monitoring Platform**. The platform will leverage AI/ML to detect, analyze, and respond to various cyber threats across multiple attack vectors.
+This document outlines the development plan for the **Python FastAPI ML Service** that provides machine learning-based spam detection capabilities. This service receives requests from the Node.js backend and returns spam predictions with confidence scores and detailed analysis.
 
 ### Current State
-- ✅ Text spam detection (ML-based)
-- ✅ Voice spam detection (speech-to-text + ML)
-- ✅ Node.js/Express backend API
-- ✅ Python FastAPI ML service
-- ✅ Basic feature extraction and explainability
+- ✅ FastAPI REST API
+- ✅ Text classification (Spam/Ham)
+- ✅ ML models (Naive Bayes, Logistic Regression, Random Forest)
+- ✅ TF-IDF vectorization
+- ✅ Text preprocessing & feature extraction
+- ✅ Voice transcription support
+- ✅ Batch prediction
+- ✅ Docker support
+- ✅ Basic explainability features
 
 ### Target State
-- 🎯 Multi-vector threat detection (text, voice, network, files, behavior)
-- 🎯 Real-time monitoring and alerting
-- 🎯 Advanced ML models (deep learning, transformers)
-- 🎯 Threat intelligence integration
-- 🎯 Automated incident response
-- 🎯 Comprehensive dashboard and analytics
-- 🎯 Integration with security tools and SIEM systems
+- 🎯 Transformer-based models (BERT, RoBERTa)
+- 🎯 Multi-language support
+- 🎯 Advanced voice analysis (emotion, speaker ID)
+- 🎯 Phishing detection
+- 🎯 Social engineering detection
+- 🎯 Model versioning & A/B testing
+- 🎯 Performance optimization (ONNX, quantization)
+- 🎯 Advanced explainability (SHAP, LIME)
+- 🎯 Model monitoring & drift detection
+- 🎯 Production-grade serving infrastructure
 
 ---
 
 ## 🏗️ Architecture Overview
 
-### Architecture Pattern
-The system follows a **microservices architecture** with clear separation of concerns:
-
-1. **Frontend** (React/Vue.js/Flutter) - User interface and visualization
-2. **Node.js Backend API** (Express.js) - Main API server handling all frontend requests
-   - Handles authentication, authorization, validation
-   - Manages business logic and data persistence
-   - Orchestrates calls to ML service
-3. **Python ML Service** (FastAPI) - Dedicated ML inference service
-   - Receives requests from Node.js backend
-   - Executes ML models for threat detection
-   - Returns predictions and analysis results
-4. **Database** (PostgreSQL) - Primary data storage (accessed via Node.js backend)
-5. **Cache** (Redis) - Caching layer
-6. **Message Queue** (RabbitMQ/Kafka) - Async task processing
-
-**Communication Flow:**
-```
-Frontend → Node.js Backend → Python ML Service → Results → Node.js Backend → Frontend
-                ↓
-          PostgreSQL Database
-```
-
-### System Components
+### System Role
+The Python ML Service is a **dedicated ML inference microservice**:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Frontend Dashboard                        │
-│         (React/Vue.js/Flutter - Real-time Threat Visualization)│
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP/REST API
-┌──────────────────────▼──────────────────────────────────────┐
-│              API Gateway / Load Balancer                     │
-│              (Authentication, Rate Limiting)                 │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│              Node.js Backend API (Express)                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │   Routes &   │  │  Controllers │  │  Middleware  │     │
-│  │  Endpoints   │  │  & Services  │  │  (Auth, etc) │     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-└───────┬──────────────────────┬──────────────────────────────┘
-        │                      │
-        │ HTTP/REST            │ Message Queue
-        │                      │
-┌───────▼──────────┐  ┌────────▼──────────┐  ┌──────────────┐
-│  Python ML       │  │  Data Pipeline    │  │  Background  │
-│  Service         │  │  (Kafka/RabbitMQ)  │  │  Workers     │
-│  (FastAPI)       │  │                    │  │  (Node.js)   │
-│  ┌────────────┐  │  └────────────────────┘  └──────────────┘
-│  │ ML Models  │  │
-│  │ (PyTorch/  │  │
-│  │ TensorFlow)│  │
-│  └────────────┘  │
-└──────────────────┘
-        │
-        └──────────────┬──────────────┐
-                       │              │
-        ┌──────────────┼──────────────┐
-        │              │              │
-┌───────▼──────┐ ┌─────▼──────┐ ┌───▼──────────────┐
-│  Threat      │ │  Network   │ │  File Analysis   │
-│  Detectors   │ │  Monitor   │ │  Engine          │
-│  (Python)    │ │  (Python)  │ │  (Python)        │
-└───────┬──────┘ └─────┬──────┘ └───┬──────────────┘
-        │              │              │
-        └──────────────┼──────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│              Data Storage Layer                              │
-│  PostgreSQL (Metadata) │ Redis (Cache) │ Elasticsearch (Logs)│
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────┐
+│  Node.js        │
+│  Backend        │
+└────────┬────────┘
+         │ HTTP REST
+┌────────▼─────────────────────────────────────┐
+│     Python ML Service (FastAPI)              │
+│  ┌────────────────────────────────────────┐  │
+│  │  API Endpoints                         │  │
+│  │  - /predict (text)                     │  │
+│  │  - /predict-voice (audio)              │  │
+│  │  - /batch-predict                      │  │
+│  └────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────┐  │
+│  │  ML Models                             │  │
+│  │  - Text Classifier                     │  │
+│  │  - Feature Extractor                  │  │
+│  │  - Preprocessor                        │  │
+│  └────────────────────────────────────────┘  │
+└──────────────────────────────────────────────┘
 ```
+
+### Integration Points
+- **Backend:** Receives HTTP requests from Node.js backend
+- **Models:** Loads pre-trained models from disk
+- **Storage:** Model files stored locally (future: model registry)
 
 ---
 
 ## 📅 Development Phases
 
-## Phase 1: Foundation & Architecture Enhancement (Weeks 1-2)
+## Phase 1: Model Enhancement (Weeks 1-3)
 
-### 1.1 Project Structure Reorganization
-**Goal:** Organize codebase for multi-module system
-
-**Tasks:**
-- [ ] Create modular directory structure:
-  ```
-  ai-anti-spam-shield/
-  ├── backend/                    # Node.js Backend API
-  │   ├── src/
-  │   │   ├── routes/             # API routes
-  │   │   │   ├── v1/
-  │   │   │   │   ├── text.js
-  │   │   │   │   ├── voice.js
-  │   │   │   │   ├── network.js
-  │   │   │   │   ├── files.js
-  │   │   │   │   ├── behavior.js
-  │   │   │   │   └── incidents.js
-  │   │   │   └── middleware/
-  │   │   ├── controllers/        # Request handlers
-  │   │   ├── services/           # Business logic
-  │   │   │   ├── mlService.js    # Calls Python ML service
-  │   │   │   ├── threatIntelligence.js
-  │   │   │   ├── incidentResponse.js
-  │   │   │   └── alerting.js
-  │   │   ├── models/             # Database models (Prisma)
-  │   │   ├── middleware/         # Auth, validation, etc.
-  │   │   ├── utils/              # Utility functions
-  │   │   ├── config/             # Configuration
-  │   │   └── app.js              # Express app setup
-  │   ├── prisma/                 # Prisma schema & migrations
-  │   ├── tests/
-  │   └── package.json
-  │
-  ├── ai-service/                 # Python ML Service (FastAPI)
-  │   ├── app/
-  │   │   ├── api/                # ML API endpoints
-  │   │   │   ├── v1/
-  │   │   │   │   ├── text.py
-  │   │   │   │   ├── voice.py
-  │   │   │   │   ├── network.py
-  │   │   │   │   ├── files.py
-  │   │   │   │   └── behavior.py
-  │   │   ├── core/               # Core configuration
-  │   │   │   ├── config.py
-  │   │   │   └── logging.py
-  │   │   ├── models/             # ML models
-  │   │   │   ├── text_classifier/
-  │   │   │   ├── network_analyzer/
-  │   │   │   ├── file_scanner/
-  │   │   │   └── behavior_analyzer/
-  │   │   ├── detectors/          # Threat detection modules
-  │   │   │   ├── spam_detector.py
-  │   │   │   ├── phishing_detector.py
-  │   │   │   ├── malware_detector.py
-  │   │   │   ├── intrusion_detector.py
-  │   │   │   └── anomaly_detector.py
-  │   │   ├── utils/              # Utility functions
-  │   │   │   ├── preprocessing.py
-  │   │   │   ├── feature_extraction.py
-  │   │   │   └── validators.py
-  │   │   └── main.py
-  │   ├── tests/
-  │   └── requirements.txt
-  │
-  ├── frontend/                   # Frontend (React/Vue.js)
-  ├── tests/                      # Integration tests
-  ├── scripts/                    # Utility scripts
-  ├── docs/                       # Documentation
-  └── deployments/                # Deployment configs (Docker, K8s)
-  ```
-
-- [ ] Refactor existing Node.js backend code into new structure
-- [ ] Refactor existing Python ML service code into new structure
-- [ ] Set up configuration management (environment variables, config files)
-- [ ] Implement logging framework (structured logging with levels)
-- [ ] Set up communication between Node.js backend and Python ML service
-
-**Deliverables:**
-- Reorganized project structure
-- Configuration management system
-- Logging infrastructure
-
----
-
-### 1.2 Database Schema Design
-**Goal:** Design database for threat tracking, incidents, and analytics
-
-**Tasks:**
-- [ ] Design PostgreSQL schema:
-  ```sql
-  -- Threats table
-  CREATE TABLE threats (
-      id UUID PRIMARY KEY,
-      threat_type VARCHAR(50),      -- spam, phishing, malware, etc.
-      severity VARCHAR(20),          -- low, medium, high, critical
-      source VARCHAR(255),           -- IP, email, file hash, etc.
-      content TEXT,
-      detection_method VARCHAR(50),  -- ml_model, rule_based, etc.
-      confidence_score FLOAT,
-      status VARCHAR(20),            -- detected, investigated, resolved
-      created_at TIMESTAMP,
-      updated_at TIMESTAMP
-  );
-
-  -- Network events table
-  CREATE TABLE network_events (
-      id UUID PRIMARY KEY,
-      source_ip INET,
-      dest_ip INET,
-      source_port INTEGER,
-      dest_port INTEGER,
-      protocol VARCHAR(10),
-      packet_size INTEGER,
-      flags VARCHAR(50),
-      is_suspicious BOOLEAN,
-      threat_id UUID REFERENCES threats(id),
-      timestamp TIMESTAMP
-  );
-
-  -- File scans table
-  CREATE TABLE file_scans (
-      id UUID PRIMARY KEY,
-      file_hash VARCHAR(64),
-      file_name VARCHAR(255),
-      file_type VARCHAR(50),
-      file_size BIGINT,
-      scan_result VARCHAR(20),       -- clean, suspicious, malicious
-      threat_id UUID REFERENCES threats(id),
-      scanned_at TIMESTAMP
-  );
-
-  -- Incidents table
-  CREATE TABLE incidents (
-      id UUID PRIMARY KEY,
-      title VARCHAR(255),
-      description TEXT,
-      severity VARCHAR(20),
-      status VARCHAR(20),            -- open, investigating, resolved
-      assigned_to VARCHAR(100),
-      related_threats UUID[],
-      created_at TIMESTAMP,
-      resolved_at TIMESTAMP
-  );
-
-  -- ML model versions table
-  CREATE TABLE model_versions (
-      id UUID PRIMARY KEY,
-      model_type VARCHAR(50),
-      version VARCHAR(20),
-      accuracy FLOAT,
-      trained_at TIMESTAMP,
-      is_active BOOLEAN,
-      model_path VARCHAR(255)
-  );
-
-  -- User feedback table (for model improvement)
-  CREATE TABLE feedback (
-      id UUID PRIMARY KEY,
-      threat_id UUID REFERENCES threats(id),
-      is_correct BOOLEAN,
-      user_comment TEXT,
-      created_at TIMESTAMP
-  );
-  ```
-
-- [ ] Set up database migrations (Prisma for Node.js backend)
-- [ ] Create database connection pooling (Node.js backend)
-- [ ] Implement database models using Prisma ORM (Node.js backend)
-- [ ] Set up database access from Python ML service if needed
-
-**Deliverables:**
-- Database schema
-- Migration scripts
-- ORM models
-
----
-
-### 1.3 Enhanced API Architecture
-**Goal:** Expand Node.js backend API with versioning, authentication, and new endpoints
-
-**Tasks:**
-- [ ] Implement API versioning in Node.js backend (v1, v2)
-- [ ] Add authentication/authorization (Node.js backend):
-  - JWT token-based auth
-  - API key support
-  - Role-based access control (RBAC)
-  - Refresh token mechanism
-- [ ] Add rate limiting middleware (Express rate limiter)
-- [ ] Implement request validation and sanitization (express-validator, joi)
-- [ ] Add API documentation (Swagger/OpenAPI for Node.js)
-- [ ] Create new Node.js backend endpoints:
-  - `GET /api/v1/threats` - List/search threats
-  - `GET /api/v1/threats/:id` - Get threat details
-  - `POST /api/v1/network/monitor` - Network monitoring
-  - `POST /api/v1/files/scan` - File scanning
-  - `GET/POST /api/v1/incidents` - Incident management
-  - `GET /api/v1/analytics` - Analytics and statistics
-- [ ] Set up HTTP client in Node.js backend to call Python ML service
-- [ ] Implement error handling and retry logic for ML service calls
-
-**Deliverables:**
-- Enhanced Node.js backend API with authentication
-- New endpoint structure
-- API documentation
-- Integration layer between Node.js backend and Python ML service
-
-**Architecture Note:**
-- **Node.js Backend** receives all HTTP requests from frontend
-- **Node.js Backend** handles authentication, authorization, validation, and business logic
-- **Node.js Backend** calls **Python ML Service** via HTTP REST API for ML inference
-- **Python ML Service** is a separate microservice focused solely on ML model execution
-- Communication pattern: `Frontend → Node.js Backend → Python ML Service → Database`
-
----
-
-## Phase 2: Advanced Text & Voice Threat Detection (Weeks 3-4)
-
-### 2.1 Enhanced Text Analysis
-**Goal:** Expand text detection beyond spam to phishing, social engineering, etc.
-
-**Tasks:**
-- [ ] Implement phishing detection:
-  - URL analysis (checking against blacklists, suspicious domains)
-  - Email header analysis
-  - Link preview and content analysis
-  - Brand impersonation detection
-- [ ] Add social engineering detection:
-  - Urgency/panic language detection
-  - Authority impersonation
-  - Emotional manipulation patterns
-- [ ] Implement multi-language support:
-  - Language detection
-  - Multi-language models or translation
-- [ ] Add context-aware analysis:
-  - Conversation history analysis
-  - User behavior patterns
-  - Time-based anomaly detection
-- [ ] Enhance feature extraction:
-  - Sentiment analysis
-  - Named entity recognition (NER)
-  - Intent classification
-  - Toxicity detection
-
-**Deliverables:**
-- Enhanced text threat detector
-- Phishing detection module
-- Multi-language support
-
----
-
-### 2.2 Advanced Voice Analysis
-**Goal:** Expand voice detection with deeper analysis
-
-**Tasks:**
-- [ ] Implement voice biometrics:
-  - Speaker identification
-  - Voice cloning detection
-  - Synthetic voice detection (deepfake audio)
-- [ ] Add emotion detection from voice:
-  - Stress detection
-  - Deception indicators
-- [ ] Implement real-time voice streaming analysis
-- [ ] Add noise reduction and audio quality enhancement
-- [ ] Create voice threat patterns database
-
-**Deliverables:**
-- Advanced voice analysis module
-- Voice biometrics detection
-- Real-time voice processing
-
----
-
-### 2.3 Transformer-Based Models
+### 1.1 Transformer-Based Models
 **Goal:** Upgrade from traditional ML to deep learning models
 
 **Tasks:**
@@ -385,18 +76,23 @@ Frontend → Node.js Backend → Python ML Service → Results → Node.js Backe
   - BERT/RoBERTa for text classification
   - DistilBERT for faster inference
   - Multilingual models (mBERT, XLM-R)
+- [ ] Set up transformer infrastructure:
+  - Install `transformers` library
+  - Install PyTorch or TensorFlow
+  - GPU support (optional)
 - [ ] Fine-tune models on cybersecurity datasets:
   - Phishing emails dataset
   - Spam messages dataset
   - Social engineering examples
+  - Custom dataset preparation
 - [ ] Implement model serving:
-  - ONNX runtime for optimization
-  - TensorRT for GPU acceleration
-  - Model quantization for edge deployment
+  - Model loading and caching
+  - Batch inference optimization
+  - Model versioning system
 - [ ] A/B testing framework:
   - Compare old vs new models
   - Gradual rollout strategy
-- [ ] Model versioning and rollback system
+  - Performance metrics tracking
 
 **Deliverables:**
 - Fine-tuned transformer models
@@ -405,857 +101,351 @@ Frontend → Node.js Backend → Python ML Service → Results → Node.js Backe
 
 ---
 
-## Phase 3: Network Threat Detection (Weeks 5-7)
-
-### 3.1 Network Traffic Monitoring
-**Goal:** Monitor and analyze network traffic for threats
+### 1.2 Model Optimization
+**Goal:** Optimize models for production performance
 
 **Tasks:**
-- [ ] Implement packet capture:
-  - Use libraries: scapy, pypcap, or dpkt
-  - Capture network packets (TCP, UDP, ICMP)
-  - Parse packet headers and payloads
-- [ ] Create network event collector:
-  - Real-time packet analysis
-  - Flow-based analysis (NetFlow/sFlow)
-  - Connection tracking
-- [ ] Implement protocol analysis:
-  - HTTP/HTTPS inspection
-  - DNS query analysis
-  - SMTP/IMAP email protocol analysis
-  - FTP/SFTP file transfer monitoring
-- [ ] Add network anomaly detection:
-  - Unusual traffic patterns
-  - Port scanning detection
-  - DDoS attack detection
-  - Brute force attack detection
+- [ ] Model quantization:
+  - INT8 quantization
+  - Dynamic quantization
+  - Quantization-aware training
+- [ ] ONNX conversion:
+  - Convert models to ONNX format
+  - ONNX Runtime integration
+  - Performance benchmarking
+- [ ] Model pruning:
+  - Remove unnecessary weights
+  - Reduce model size
+  - Maintain accuracy
+- [ ] Batch processing optimization:
+  - Efficient batching
+  - Parallel processing
+  - Memory optimization
 
 **Deliverables:**
-- Network monitoring module
-- Packet capture system
-- Protocol analyzers
+- Optimized models
+- ONNX runtime integration
+- Performance benchmarks
 
 ---
 
-### 3.2 Intrusion Detection System (IDS)
-**Goal:** Detect network intrusions and attacks
+## Phase 2: Advanced Detection Capabilities (Weeks 4-6)
+
+### 2.1 Phishing Detection
+**Goal:** Expand beyond spam to detect phishing attempts
 
 **Tasks:**
-- [ ] Implement signature-based detection:
-  - Snort/YARA rule integration
-  - Known attack pattern matching
-  - Malware signature database
-- [ ] Create anomaly-based detection:
-  - Baseline network behavior
-  - Statistical anomaly detection
-  - Machine learning-based anomaly detection
-- [ ] Add attack type classification:
-  - SQL injection attempts
-  - XSS (Cross-Site Scripting) detection
-  - Command injection detection
-  - Buffer overflow attempts
-  - Man-in-the-middle (MITM) detection
-- [ ] Implement real-time alerting:
-  - Alert severity levels
-  - Alert correlation
-  - False positive reduction
-
-**Deliverables:**
-- IDS module
-- Attack classification system
-- Alerting system
-
----
-
-### 3.3 Network ML Models
-**Goal:** Train ML models for network threat detection
-
-**Tasks:**
-- [ ] Feature engineering for network data:
-  - Packet size statistics
-  - Protocol distribution
-  - Connection duration
-  - Port usage patterns
-  - Geographic IP analysis
-- [ ] Train classification models:
-  - Binary classification (malicious/benign)
-  - Multi-class classification (attack types)
-  - Time-series models for traffic prediction
-- [ ] Implement deep learning models:
-  - LSTM for sequence analysis
-  - CNN for pattern recognition
-  - Autoencoders for anomaly detection
-- [ ] Create network threat intelligence:
-  - IP reputation database
+- [ ] URL analysis:
   - Domain reputation checking
-  - Threat feed integration (AbuseIPDB, VirusTotal, etc.)
+  - URL structure analysis
+  - Shortened URL expansion
+  - Blacklist checking
+- [ ] Email header analysis:
+  - SPF/DKIM validation
+  - Sender reputation
+  - Header anomalies
+- [ ] Content analysis:
+  - Brand impersonation detection
+  - Link preview analysis
+  - Suspicious patterns
+- [ ] Create phishing detection model:
+  - Train on phishing datasets
+  - Feature engineering
+  - Model evaluation
 
 **Deliverables:**
-- Network ML models
-- Feature engineering pipeline
-- Threat intelligence integration
+- Phishing detection module
+- URL analysis service
+- Phishing detection model
 
 ---
 
-## Phase 4: File & Malware Detection (Weeks 8-10)
-
-### 4.1 File Analysis Engine
-**Goal:** Analyze files for malware and threats
+### 2.2 Social Engineering Detection
+**Goal:** Detect social engineering tactics
 
 **Tasks:**
-- [ ] Implement file type detection:
-  - Magic number analysis
-  - File extension validation
-  - Content-based type detection
-- [ ] Create static analysis:
-  - File metadata extraction
-  - String extraction and analysis
-  - Entropy calculation
-  - PE (Portable Executable) analysis for Windows files
-  - ELF analysis for Linux files
-  - PDF structure analysis
-  - Office document macro analysis
-- [ ] Implement dynamic analysis (sandboxing):
-  - File execution in isolated environment
-  - Behavior monitoring (file system, registry, network)
-  - API call tracking
-  - Process monitoring
-- [ ] Add hash-based detection:
-  - MD5, SHA-256 hash calculation
-  - Hash database lookup (VirusTotal, etc.)
-  - Fuzzy hashing (ssdeep, TLSH)
+- [ ] Urgency detection:
+  - Urgency keyword detection
+  - Time pressure indicators
+  - Panic language patterns
+- [ ] Authority impersonation:
+  - Authority keyword detection
+  - Impersonation patterns
+  - Context analysis
+- [ ] Emotional manipulation:
+  - Emotional language analysis
+  - Fear/guilt tactics
+  - Manipulation patterns
+- [ ] Create social engineering model:
+  - Train on social engineering examples
+  - Feature extraction
+  - Model training
 
 **Deliverables:**
-- File analysis engine
-- Static analysis module
-- Sandboxing infrastructure (optional)
+- Social engineering detection module
+- Pattern recognition system
+- Trained model
 
 ---
 
-### 4.2 Malware Detection ML Models
-**Goal:** Train ML models for malware detection
+### 2.3 Multi-Language Support
+**Goal:** Support spam detection in multiple languages
 
 **Tasks:**
-- [ ] Collect malware datasets:
-  - Malware samples (safely)
-  - Clean file samples
-  - Various file types (PE, PDF, Office, etc.)
-- [ ] Feature extraction:
-  - N-gram analysis
-  - Opcode sequences
-  - API call sequences
-  - File structure features
-  - Entropy features
-- [ ] Train classification models:
-  - Binary classification (malware/clean)
-  - Malware family classification
-  - File type-specific models
-- [ ] Implement ensemble methods:
-  - Combine multiple models
-  - Voting mechanisms
-  - Stacking/blending
+- [ ] Language detection:
+  - Install language detection library
+  - Detect input language
+  - Route to appropriate model
+- [ ] Multi-language models:
+  - Use multilingual transformers (mBERT, XLM-R)
+  - Fine-tune on multi-language data
+  - Language-specific preprocessing
+- [ ] Translation fallback:
+  - Translate to English if needed
+  - Use English model as fallback
+  - Maintain accuracy
 
 **Deliverables:**
-- Malware detection models
-- Feature extraction pipeline
-- Model ensemble system
+- Multi-language detection
+- Language-specific models
+- Translation integration
 
 ---
 
-### 4.3 File Upload & Scanning API
-**Goal:** Create API for file scanning
+## Phase 3: Advanced Voice Analysis (Weeks 7-8)
+
+### 3.1 Voice Biometrics
+**Goal:** Add voice biometric analysis
 
 **Tasks:**
-- [ ] Implement file upload endpoint in Node.js backend:
-  - Multi-file upload support (using multer or similar)
-  - File size limits
-  - File type restrictions
-  - Initial validation before forwarding to ML service
-- [ ] Create scanning queue (Node.js backend):
-  - Asynchronous scanning using message queue (RabbitMQ/Kafka)
-  - Priority queue (by file size, type)
-  - Retry mechanism for ML service calls
-- [ ] Implement Node.js backend → Python ML service integration:
-  - HTTP client to call Python ML service `/api/v1/files/scan` endpoint
-  - File forwarding to ML service
-  - Result handling and error management
-- [ ] Add scanning results storage (Node.js backend):
-  - Store scan results in PostgreSQL via Prisma
-  - Generate reports
-  - Historical scan data
-- [ ] Implement real-time scanning:
-  - WebSocket support in Node.js backend for progress updates
-  - Streaming results to frontend
+- [ ] Speaker identification:
+  - Voice fingerprinting
+  - Speaker verification
+  - Speaker database
+- [ ] Voice cloning detection:
+  - Deepfake audio detection
+  - Synthetic voice detection
+  - Authenticity verification
+- [ ] Voice quality analysis:
+  - Audio quality metrics
+  - Noise detection
+  - Compression artifacts
 
 **Deliverables:**
-- File scanning API
-- Queue system
-- Results storage
+- Voice biometric module
+- Speaker identification system
+- Deepfake detection
 
 ---
 
-## Phase 5: Behavioral Analysis & Anomaly Detection (Weeks 11-13)
-
-### 5.1 User Behavior Analytics
-**Goal:** Detect anomalies in user behavior
+### 3.2 Emotion & Stress Detection
+**Goal:** Detect emotions and stress in voice
 
 **Tasks:**
-- [ ] Implement user profiling:
-  - Baseline behavior patterns
-  - Login patterns
-  - Access patterns
-  - Communication patterns
-- [ ] Create anomaly detection:
-  - Statistical methods (Z-score, IQR)
-  - Machine learning (Isolation Forest, One-Class SVM)
-  - Deep learning (Autoencoders, LSTM)
-- [ ] Add behavioral indicators:
-  - Unusual login times/locations
-  - Unusual data access patterns
-  - Privilege escalation attempts
-  - Unusual communication patterns
-- [ ] Implement risk scoring:
-  - User risk score calculation
-  - Session risk scoring
-  - Real-time risk updates
+- [ ] Emotion detection:
+  - Emotion classification model
+  - Stress indicators
+  - Deception indicators
+- [ ] Voice pattern analysis:
+  - Pitch analysis
+  - Speed analysis
+  - Pause patterns
+- [ ] Integration with spam detection:
+  - Combine with text analysis
+  - Multi-modal detection
+  - Enhanced accuracy
 
 **Deliverables:**
-- User behavior analytics module
-- Anomaly detection system
-- Risk scoring engine
+- Emotion detection module
+- Stress analysis system
+- Multi-modal integration
 
 ---
 
-### 5.2 System Behavior Monitoring
-**Goal:** Monitor system-level behavior for threats
+## Phase 4: Model Management & Monitoring (Weeks 9-10)
+
+### 4.1 Model Versioning & Registry
+**Goal:** Implement model versioning system
 
 **Tasks:**
-- [ ] Implement system metrics collection:
-  - CPU, memory, disk usage
-  - Process monitoring
-  - Network connections
-  - File system changes
-- [ ] Create system anomaly detection:
-  - Resource exhaustion detection
-  - Unusual process behavior
-  - File system anomalies
-  - Registry changes (Windows)
-- [ ] Add rootkit detection:
-  - Hidden process detection
-  - Kernel module analysis
-  - Boot sector analysis
-- [ ] Implement log analysis:
-  - System log parsing
-  - Application log analysis
-  - Security event log analysis
-  - Log correlation
-
-**Deliverables:**
-- System monitoring module
-- Log analysis system
-- Anomaly detection
-
----
-
-### 5.3 Behavioral ML Models
-**Goal:** Train models for behavioral anomaly detection
-
-**Tasks:**
-- [ ] Create behavioral datasets:
-  - Normal behavior samples
-  - Anomalous behavior samples
-  - Attack simulation data
-- [ ] Feature engineering:
-  - Temporal features
-  - Frequency features
-  - Sequence features
-  - Statistical features
-- [ ] Train models:
-  - Time-series models (LSTM, GRU)
-  - Clustering models (K-means, DBSCAN)
-  - Anomaly detection models
-- [ ] Implement model evaluation:
-  - False positive rate optimization
-  - Precision-recall optimization
-  - Real-time performance testing
-
-**Deliverables:**
-- Behavioral ML models
-- Feature engineering pipeline
-- Evaluation framework
-
----
-
-## Phase 6: Threat Intelligence & Integration (Weeks 14-15)
-
-### 6.1 Threat Intelligence Platform
-**Goal:** Integrate external threat intelligence sources
-
-**Tasks:**
-- [ ] Integrate threat feeds:
-  - AbuseIPDB API
-  - VirusTotal API
-  - AlienVault OTX
-  - Shodan API
-  - CVE database
-  - MITRE ATT&CK framework
-- [ ] Create threat intelligence database:
-  - IP reputation database
-  - Domain reputation database
-  - File hash database
-  - CVE database
-- [ ] Implement threat enrichment:
-  - Automatic enrichment of detected threats
-  - Historical threat data
-  - Threat correlation
-- [ ] Add threat sharing:
-  - Export threat indicators (STIX/TAXII)
-  - Share with other systems
-  - Community threat sharing
-
-**Deliverables:**
-- Threat intelligence integration
-- Threat database
-- Enrichment system
-
----
-
-### 6.2 SIEM Integration
-**Goal:** Integrate with Security Information and Event Management systems
-
-**Tasks:**
-- [ ] Implement log forwarding:
-  - Syslog support
-  - CEF (Common Event Format)
-  - JSON log format
-- [ ] Add SIEM connectors:
-  - Splunk integration
-  - ELK Stack integration
-  - QRadar integration
-  - ArcSight integration
-- [ ] Create event correlation:
-  - Correlate events from multiple sources
-  - Create incident timelines
-  - Identify attack patterns
-- [ ] Implement alert forwarding:
-  - Real-time alert forwarding
-  - Alert deduplication
-  - Alert prioritization
-
-**Deliverables:**
-- SIEM integration modules
-- Log forwarding system
-- Event correlation engine
-
----
-
-## Phase 7: Incident Response & Automation (Weeks 16-17)
-
-### 7.1 Incident Management System
-**Goal:** Create comprehensive incident management
-
-**Tasks:**
-- [ ] Implement incident lifecycle:
-  - Detection → Triage → Investigation → Response → Resolution
-  - Status tracking
-  - Assignment and escalation
-- [ ] Create incident types:
-  - Spam/phishing incidents
-  - Malware incidents
-  - Network intrusion incidents
-  - Data breach incidents
-  - Account compromise incidents
-- [ ] Add incident workflows:
-  - Automated workflows
-  - Manual workflows
-  - Custom workflows
-- [ ] Implement incident reporting:
-  - Incident reports generation
-  - Executive summaries
-  - Compliance reports
-
-**Deliverables:**
-- Incident management system
-- Workflow engine
-- Reporting system
-
----
-
-### 7.2 Automated Response
-**Goal:** Automate threat response actions
-
-**Tasks:**
-- [ ] Implement response actions:
-  - Block IP addresses
-  - Quarantine files
-  - Disable user accounts
-  - Isolate network segments
-  - Send notifications
-- [ ] Create playbooks:
-  - Predefined response playbooks
-  - Custom playbooks
-  - Playbook execution engine
-- [ ] Add response automation:
-  - Rule-based automation
-  - ML-based automation
-  - Human-in-the-loop approval
-- [ ] Implement response tracking:
-  - Response action logging
-  - Effectiveness measurement
-  - Response time metrics
-
-**Deliverables:**
-- Automated response system
-- Playbook engine
-- Response tracking
-
----
-
-### 7.3 Notification & Alerting
-**Goal:** Create comprehensive alerting system
-
-**Tasks:**
-- [ ] Implement notification channels:
-  - Email notifications
-  - SMS notifications
-  - Slack/Teams integration
-  - PagerDuty integration
-  - Webhook support
-- [ ] Create alert rules:
-  - Severity-based rules
-  - Time-based rules
-  - Threshold-based rules
-- [ ] Add alert management:
-  - Alert deduplication
-  - Alert grouping
-  - Alert suppression
-  - Alert acknowledgment
-- [ ] Implement escalation:
-  - Escalation policies
-  - On-call rotation
-  - Escalation workflows
-
-**Deliverables:**
-- Alerting system
-- Notification channels
-- Escalation system
-
----
-
-## Phase 8: Dashboard & Analytics (Weeks 18-20)
-
-### 8.1 Real-Time Dashboard
-**Goal:** Create comprehensive security dashboard
-
-**Tasks:**
-- [ ] Design dashboard UI:
-  - Real-time threat feed
-  - Threat statistics
-  - System health metrics
-  - Incident overview
-- [ ] Implement data visualization:
-  - Threat trends (line charts)
-  - Threat distribution (pie charts)
-  - Geographic threat map
-  - Network topology visualization
-  - Timeline visualization
-- [ ] Add interactive features:
-  - Filtering and search
-  - Drill-down capabilities
-  - Customizable widgets
-  - Dashboard templates
-- [ ] Create real-time updates:
-  - WebSocket integration
-  - Live data streaming
-  - Auto-refresh
-
-**Deliverables:**
-- Dashboard application
-- Visualization components
-- Real-time updates
-
----
-
-### 8.2 Analytics & Reporting
-**Goal:** Create analytics and reporting system
-
-**Tasks:**
-- [ ] Implement analytics engine:
-  - Threat statistics
-  - Detection rate analysis
-  - False positive analysis
-  - Response time analysis
-  - Cost analysis
-- [ ] Create reports:
-  - Daily/weekly/monthly reports
-  - Executive summaries
-  - Technical reports
-  - Compliance reports
-- [ ] Add data export:
-  - CSV export
-  - PDF export
-  - JSON export
-  - API export
-- [ ] Implement scheduled reports:
-  - Automated report generation
-  - Email delivery
-  - Report archiving
-
-**Deliverables:**
-- Analytics engine
-- Reporting system
-- Export functionality
-
----
-
-### 8.3 Machine Learning Model Management
-**Goal:** Create ML model management and monitoring
-
-**Tasks:**
-- [ ] Implement model registry:
-  - Model versioning
-  - Model metadata
-  - Model lineage
-  - Model comparison
-- [ ] Add model monitoring:
-  - Model performance tracking
-  - Drift detection
-  - Accuracy monitoring
-  - Inference time monitoring
-- [ ] Create model retraining:
-  - Automated retraining pipeline
-  - A/B testing
-  - Gradual rollout
+- [ ] Model registry:
+  - Model storage system
+  - Version tracking
+  - Metadata management
+- [ ] Model deployment:
+  - Version switching
   - Rollback capability
-- [ ] Implement model explainability:
-  - SHAP values
-  - LIME explanations
-  - Feature importance
-  - Decision trees visualization
+  - Gradual rollout
+- [ ] Model comparison:
+  - Performance comparison
+  - A/B testing results
+  - Model selection criteria
 
 **Deliverables:**
-- Model management system
+- Model registry
+- Version management system
+- Deployment tools
+
+---
+
+### 4.2 Model Monitoring & Drift Detection
+**Goal:** Monitor model performance and detect drift
+
+**Tasks:**
+- [ ] Performance monitoring:
+  - Prediction accuracy tracking
+  - Response time monitoring
+  - Error rate tracking
+- [ ] Drift detection:
+  - Data distribution monitoring
+  - Concept drift detection
+  - Performance degradation alerts
+- [ ] Model retraining pipeline:
+  - Automated retraining triggers
+  - Retraining workflow
+  - Model evaluation
+
+**Deliverables:**
 - Monitoring dashboard
+- Drift detection system
 - Retraining pipeline
 
 ---
 
-## Phase 9: Performance & Scalability (Weeks 21-22)
-
-### 9.1 Performance Optimization
-**Goal:** Optimize system performance
+### 4.3 Advanced Explainability
+**Goal:** Provide detailed model explanations
 
 **Tasks:**
-- [ ] Optimize ML inference:
-  - Model quantization
+- [ ] SHAP values:
+  - Feature importance scores
+  - SHAP visualization
+  - Explanation API
+- [ ] LIME explanations:
+  - Local explanations
+  - Feature contributions
+  - Visualizations
+- [ ] Feature importance:
+  - Global feature importance
+  - Per-prediction importance
+  - Explanation generation
+
+**Deliverables:**
+- Explainability module
+- Explanation API endpoints
+- Visualization tools
+
+---
+
+## Phase 5: Performance & Production (Weeks 11-12)
+
+### 5.1 Performance Optimization
+**Goal:** Optimize inference performance
+
+**Tasks:**
+- [ ] Inference optimization:
+  - Model caching
   - Batch processing
-  - Caching strategies
-  - GPU acceleration
-- [ ] Database optimization:
-  - Query optimization
-  - Indexing strategy
-  - Connection pooling
-  - Read replicas
+  - GPU acceleration (if available)
 - [ ] API optimization:
-  - Response caching
-  - Pagination
-  - Compression
   - Async processing
-- [ ] Add performance monitoring:
-  - APM (Application Performance Monitoring)
-  - Metrics collection
-  - Performance profiling
-  - Bottleneck identification
+  - Request queuing
+  - Response caching
+- [ ] Resource management:
+  - Memory optimization
+  - CPU usage optimization
+  - Connection pooling
 
 **Deliverables:**
-- Performance optimizations
-- Monitoring system
-- Performance reports
+- Optimized inference pipeline
+- Performance benchmarks
+- Resource optimization
 
 ---
 
-### 9.2 Scalability & High Availability
-**Goal:** Make system scalable and highly available
+### 5.2 Production Infrastructure
+**Goal:** Production-ready deployment
 
 **Tasks:**
-- [ ] Implement horizontal scaling:
+- [ ] Model serving:
+  - TorchServe or TensorFlow Serving
+  - Model server setup
   - Load balancing
-  - Auto-scaling
-  - Service mesh (Istio/Linkerd)
-- [ ] Add high availability:
-  - Database replication
-  - Failover mechanisms
-  - Health checks
-  - Circuit breakers
-- [ ] Implement caching:
-  - Redis caching
-  - CDN integration
-  - Application-level caching
-- [ ] Add message queue:
-  - RabbitMQ/Kafka integration
-  - Event-driven architecture
-  - Async task processing
-
-**Deliverables:**
-- Scalable architecture
-- HA configuration
-- Caching system
-
----
-
-## Phase 10: Security & Compliance (Weeks 23-24)
-
-### 10.1 Security Hardening
-**Goal:** Secure the platform itself
-
-**Tasks:**
-- [ ] Implement security controls:
-  - Input validation and sanitization
-  - SQL injection prevention
-  - XSS prevention
-  - CSRF protection
-  - Rate limiting
-- [ ] Add encryption:
-  - Data encryption at rest
-  - Data encryption in transit (TLS)
-  - Key management
-- [ ] Implement access control:
-  - Role-based access control (RBAC)
-  - Multi-factor authentication (MFA)
-  - Single sign-on (SSO)
-  - Audit logging
-- [ ] Security testing:
-  - Penetration testing
-  - Vulnerability scanning
-  - Code security scanning
-  - Dependency scanning
-
-**Deliverables:**
-- Security controls
-- Encryption implementation
-- Security test results
-
----
-
-### 10.2 Compliance & Privacy
-**Goal:** Ensure compliance with regulations
-
-**Tasks:**
-- [ ] GDPR compliance:
-  - Data minimization
-  - Right to erasure
-  - Data portability
-  - Privacy by design
-- [ ] Add compliance frameworks:
-  - SOC 2
-  - ISO 27001
-  - NIST Cybersecurity Framework
-  - PCI DSS (if handling payment data)
-- [ ] Implement data retention:
-  - Retention policies
-  - Automated deletion
-  - Data archiving
-- [ ] Create compliance reports:
-  - Audit reports
-  - Compliance dashboards
-  - Evidence collection
-
-**Deliverables:**
-- Compliance framework
-- Privacy controls
-- Compliance reports
-
----
-
-## Phase 11: Testing & Quality Assurance (Weeks 25-26)
-
-### 11.1 Testing Strategy
-**Goal:** Comprehensive testing
-
-**Tasks:**
-- [ ] Unit testing:
-  - Node.js backend: Jest tests for controllers, services, utilities
-  - Python ML service: pytest tests for ML models, detectors, utilities
-  - Test coverage > 80% for both services
-  - Mock external dependencies
-  - Test edge cases
-- [ ] Integration testing:
-  - Node.js backend API integration tests (Supertest)
-  - Database integration tests (Prisma)
-  - Node.js backend → Python ML service integration tests
-  - External service integration tests (threat intelligence APIs)
-- [ ] End-to-end testing:
-  - Frontend → Node.js backend → Python ML service flow
-  - User workflow tests
-  - Threat detection flow tests
-  - Incident response flow tests
-- [ ] Performance testing:
-  - Load testing (Node.js backend API)
-  - ML service inference performance
-  - Stress testing
-  - Endurance testing
-- [ ] Security testing:
-  - Penetration testing
-  - Vulnerability scanning
-  - Security code review (both Node.js and Python)
-
-**Deliverables:**
-- Test suite
-- Test reports
-- Coverage reports
-
----
-
-### 11.2 Quality Assurance
-**Goal:** Ensure code quality
-
-**Tasks:**
-- [ ] Code quality tools:
-  - Node.js backend: ESLint, Prettier, TypeScript (optional)
-  - Python ML service: pylint, flake8, black, mypy
-  - Complexity analysis for both
-- [ ] Code review process:
-  - Pull request reviews
-  - Automated checks
-  - Documentation requirements
-- [ ] Continuous integration:
-  - CI/CD pipeline for both Node.js backend and Python ML service
-  - Automated testing (Jest for Node.js, pytest for Python)
-  - Automated deployment (Docker containers)
+- [ ] Health checks:
+  - Model health endpoints
+  - System health monitoring
+  - Graceful degradation
+- [ ] Logging & monitoring:
+  - Structured logging
+  - Metrics collection
+  - Error tracking
 - [ ] Documentation:
-  - API documentation (Swagger/OpenAPI for Node.js backend)
-  - Code documentation (JSDoc for Node.js, docstrings for Python)
-  - User guides
-  - Architecture documentation (including Node.js ↔ Python communication)
+  - API documentation
+  - Model documentation
+  - Deployment guide
 
 **Deliverables:**
-- QA processes
-- CI/CD pipeline
-- Documentation
+- Production infrastructure
+- Monitoring setup
+- Complete documentation
 
 ---
 
-## Phase 12: Deployment & Operations (Weeks 27-28)
+## 🔧 Technology Stack
 
-### 12.1 Deployment Strategy
-**Goal:** Production deployment
+### Current Stack
+- **Framework:** FastAPI 0.109+
+- **ML Library:** scikit-learn 1.4+
+- **NLP:** NLTK 3.8+
+- **Voice:** SpeechRecognition, pydub
+- **Server:** Uvicorn
+- **Data:** pandas, numpy
 
-**Tasks:**
-- [ ] Containerization:
-  - Docker images for Node.js backend
-  - Docker images for Python ML service
-  - Multi-stage builds for both
-  - Image optimization
-- [ ] Orchestration:
-  - Kubernetes deployment for both services
-  - Helm charts
-  - Service definitions and service discovery
-  - Configure Node.js backend to discover Python ML service
-- [ ] Infrastructure as Code:
-  - Terraform/CloudFormation
-  - Infrastructure automation
-  - Environment management
-- [ ] Deployment automation:
-  - CI/CD pipelines for both services
-  - Blue-green deployment
-  - Canary releases
-  - Rollback procedures
-  - Health checks for both services
-
-**Deliverables:**
-- Deployment configurations
-- CI/CD pipelines
-- Infrastructure code
+### Planned Additions
+- **Deep Learning:** PyTorch / TensorFlow
+- **Transformers:** Hugging Face Transformers
+- **Optimization:** ONNX Runtime
+- **Monitoring:** Prometheus, MLflow
+- **Explainability:** SHAP, LIME
 
 ---
 
-### 12.2 Monitoring & Operations
-**Goal:** Production monitoring and operations
+## 🔌 Integration Points
 
-**Tasks:**
-- [ ] Implement monitoring:
-  - Application monitoring (Prometheus, Grafana)
-  - Log aggregation (ELK, Loki)
-  - Error tracking (Sentry)
-  - Uptime monitoring
-- [ ] Add alerting:
-  - System alerts
-  - Performance alerts
-  - Error alerts
-  - Capacity alerts
-- [ ] Create runbooks:
-  - Incident response runbooks
-  - Troubleshooting guides
-  - Maintenance procedures
-- [ ] Implement backup and recovery:
-  - Database backups
-  - Configuration backups
-  - Disaster recovery plan
-  - Recovery testing
+### With Node.js Backend
+- **Text Endpoint:** `POST /predict`
+  - Request: `{ "message": "text to analyze" }`
+  - Response: `{ "is_spam": bool, "confidence": float, ... }`
+- **Voice Endpoint:** `POST /predict-voice`
+  - Request: Multipart form-data with audio file
+  - Response: `{ "is_spam": bool, "transcribed_text": str, ... }`
+- **Batch Endpoint:** `POST /batch-predict`
+  - Request: `{ "messages": [...] }`
+  - Response: `{ "predictions": [...] }`
 
-**Deliverables:**
-- Monitoring system
-- Alerting configuration
-- Runbooks
-- Backup procedures
+### Configuration
+- **Port:** 8000 (configurable via `PORT` env var)
+- **Model Path:** `app/model/` directory
+- **Timeout:** 30s for text, 60s for voice
 
 ---
 
-## 📊 Technology Stack Recommendations
+## 📊 Success Metrics
 
-### Backend
-- **Main API:** Node.js + Express (handles frontend requests)
-  - Express.js framework
-  - Prisma ORM for database access
-  - JWT authentication
-  - Rate limiting and middleware
-- **ML Service:** Python + FastAPI (separate ML service)
-  - FastAPI framework
-  - PyTorch or TensorFlow for deep learning
-  - scikit-learn for traditional ML
-  - Celery for async ML tasks
-- **Database:** PostgreSQL (primary), Redis (cache), Elasticsearch (logs)
-- **Message Queue:** RabbitMQ or Apache Kafka (for async processing)
-- **ML Serving:** TorchServe, TensorFlow Serving, or ONNX Runtime
+### Model Performance
+- **Accuracy:** > 95% for spam detection
+- **Precision:** > 90% for spam class
+- **Recall:** > 90% for spam class
+- **F1-Score:** > 0.90
 
-### Frontend
-- **Framework:** React or Vue.js
-- **Visualization:** D3.js, Chart.js, or Plotly
-- **Real-time:** WebSocket (Socket.io or native)
+### System Performance
+- **Inference Time:** < 100ms (text), < 2s (voice)
+- **Throughput:** > 100 requests/second
+- **Uptime:** > 99.9%
 
-### Infrastructure
-- **Containers:** Docker
-- **Orchestration:** Kubernetes
-- **Cloud:** AWS, Azure, or GCP
-- **Monitoring:** Prometheus + Grafana
-- **Logging:** ELK Stack (Elasticsearch, Logstash, Kibana)
-
-### Security Tools
-- **Threat Intelligence:** VirusTotal API, AbuseIPDB, Shodan
-- **SIEM:** Splunk, ELK Stack, or QRadar
-- **Vulnerability Scanning:** OWASP ZAP, Nessus
-
----
-
-## 🎯 Success Metrics
-
-### Detection Metrics
-- **Detection Rate:** > 95% for known threats
+### Model Quality
 - **False Positive Rate:** < 5%
 - **False Negative Rate:** < 2%
-- **Response Time:** < 100ms for text analysis, < 1s for file scanning
-
-### System Metrics
-- **Uptime:** > 99.9%
-- **API Response Time:** < 200ms (p95)
-- **Throughput:** > 1000 requests/second
-- **Scalability:** Support 10,000+ concurrent users
-
-### Business Metrics
-- **Cost per Detection:** Track and optimize
-- **Time to Detect:** < 5 minutes for critical threats
-- **Time to Respond:** < 15 minutes for critical threats
-- **User Satisfaction:** > 4.5/5.0
+- **Model Drift:** < 5% degradation
 
 ---
 
@@ -1263,106 +453,40 @@ Frontend → Node.js Backend → Python ML Service → Results → Node.js Backe
 
 ### Technical Risks
 1. **Model Accuracy:** Continuous monitoring and retraining
-2. **Performance:** Load testing and optimization
-3. **Scalability:** Horizontal scaling architecture
-4. **Data Quality:** Data validation and cleaning pipelines
+2. **Performance:** Model optimization and caching
+3. **Dependencies:** Version pinning and testing
 
-### Security Risks
-1. **Platform Security:** Regular security audits
-2. **Data Privacy:** Encryption and access controls
-3. **Compliance:** Regular compliance audits
-4. **Threat Intelligence:** Keep feeds updated
-
-### Operational Risks
-1. **Dependencies:** Monitor and update dependencies
-2. **Vendor Lock-in:** Use open-source where possible
-3. **Team Knowledge:** Documentation and training
-4. **Budget:** Cost monitoring and optimization
+### Data Risks
+1. **Data Quality:** Data validation and cleaning
+2. **Bias:** Bias detection and mitigation
+3. **Privacy:** Data anonymization
 
 ---
 
-## 📚 Resources & References
+## 📝 Next Steps
 
-### Datasets
-- **Spam:** Enron Spam Dataset, SMS Spam Collection
-- **Phishing:** Phishing Corpus, APWG Phishing Dataset
-- **Malware:** VirusShare, MalwareBazaar
-- **Network:** CICIDS2017, UNSW-NB15
-- **Behavioral:** CERT Insider Threat Dataset
+1. **Immediate (Week 1):**
+   - Set up transformer models
+   - Fine-tune on cybersecurity datasets
+   - Implement model serving
 
-### Research Papers
-- "Deep Learning for Cybersecurity" - Various authors
-- "Anomaly Detection: A Survey" - Chandola et al.
-- "Machine Learning for Network Security" - Various authors
+2. **Short-term (Weeks 2-4):**
+   - Add phishing detection
+   - Implement multi-language support
+   - Enhance voice analysis
 
-### Tools & Libraries
+3. **Medium-term (Weeks 5-8):**
+   - Model optimization
+   - Advanced explainability
+   - Monitoring setup
 
-**Node.js Backend:**
-- **Framework:** Express.js, Fastify (optional)
-- **ORM:** Prisma
-- **Auth:** jsonwebtoken, bcryptjs
-- **Validation:** express-validator, joi
-- **HTTP Client:** axios, node-fetch (for calling Python ML service)
-- **Testing:** Jest, Supertest
-- **Logging:** Winston, Pino
-
-**Python ML Service:**
-- **Framework:** FastAPI
-- **NLP:** Transformers (Hugging Face), spaCy, NLTK
-- **ML:** scikit-learn, XGBoost, LightGBM
-- **Deep Learning:** PyTorch, TensorFlow, Keras
-- **Network Analysis:** Scapy, dpkt, pypcap
-- **File Analysis:** pefile, yara-python, ssdeep
-- **Async Tasks:** Celery, Redis
+4. **Long-term (Weeks 9-12):**
+   - Production deployment
+   - Performance optimization
+   - Complete documentation
 
 ---
 
-## 🎓 Training & Knowledge Transfer
-
-### Team Training
-- [ ] ML/AI training sessions
-- [ ] Cybersecurity training
-- [ ] System architecture training
-- [ ] Tool-specific training
-
-### Documentation
-- [ ] Architecture documentation
-- [ ] API documentation
-- [ ] User guides
-- [ ] Developer guides
-- [ ] Operations runbooks
-
----
-
-## 📝 Conclusion
-
-This comprehensive plan transforms the AI Anti-Spam Shield into a full-featured cybersecurity platform. The phased approach allows for incremental development, testing, and deployment while maintaining system stability.
-
-**Key Success Factors:**
-1. **Incremental Development:** Build and test each phase before moving to the next
-2. **Continuous Integration:** Regular testing and deployment
-3. **User Feedback:** Incorporate feedback throughout development
-4. **Security First:** Security considerations at every phase
-5. **Scalability:** Design for growth from the beginning
-
-**Estimated Timeline:** 28 weeks (7 months) for full implementation
-**Team Size:** 4-6 developers recommended
-**Budget Considerations:** Cloud infrastructure, threat intelligence APIs, security tools
-
----
-
-## 📞 Next Steps
-
-1. **Review and Approve Plan:** Stakeholder review and approval
-2. **Assemble Team:** Recruit necessary skills
-3. **Set Up Infrastructure:** Development and staging environments
-4. **Begin Phase 1:** Start with foundation and architecture
-5. **Regular Reviews:** Weekly progress reviews and adjustments
-
----
-
-**Document Version:** 1.0
-**Last Updated:** 2025-01-XX
-**Author:** AI Development Team
-**Status:** Draft - Ready for Review
-
+**Document Version:** 1.0  
+**Last Updated:** 2025-01-XX  
+**Status:** Active Development Plan
