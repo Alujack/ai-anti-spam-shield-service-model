@@ -1,16 +1,29 @@
 from fastapi import FastAPI, HTTPException, status, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 import uvicorn
 from datetime import datetime
 import os
 import speech_recognition as sr
 import tempfile
 import io
+import logging
 
 # Import predictor
 from model.predictor import SpamPredictor
+
+# Import phishing detector
+try:
+    from detectors.phishing_detector import PhishingDetector
+    HAS_PHISHING_DETECTOR = True
+except ImportError:
+    HAS_PHISHING_DETECTOR = False
+    logging.warning("PhishingDetector not available")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -33,11 +46,21 @@ app.add_middleware(
 # Initialize predictor
 try:
     predictor = SpamPredictor(model_dir='model')
-    print("✅ Spam predictor initialized successfully!")
+    print("Spam predictor initialized successfully!")
 except Exception as e:
-    print(f"⚠️ Warning: Could not initialize predictor: {e}")
+    print(f"Warning: Could not initialize predictor: {e}")
     print("Please train the model first using: python model/train.py")
     predictor = None
+
+# Initialize phishing detector
+phishing_detector = None
+if HAS_PHISHING_DETECTOR:
+    try:
+        phishing_detector = PhishingDetector(model_dir='models')
+        print("Phishing detector initialized successfully!")
+    except Exception as e:
+        print(f"Warning: Could not initialize phishing detector: {e}")
+        phishing_detector = None
 
 # Request/Response Models
 
@@ -78,6 +101,57 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     timestamp: str
     version: str
+
+
+# Phishing Detection Models
+class PhishingRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=50000,
+                      description="Text message or URL to analyze for phishing")
+    scan_type: Literal['email', 'sms', 'url', 'auto'] = Field(
+        default='auto',
+        description="Type of scan: email, sms, url, or auto-detect"
+    )
+
+
+class URLScanRequest(BaseModel):
+    url: str = Field(..., min_length=5, max_length=2000,
+                     description="URL to analyze for phishing")
+
+
+class BatchPhishingRequest(BaseModel):
+    items: List[str] = Field(..., min_items=1, max_items=100,
+                             description="List of texts/URLs to analyze")
+    scan_type: Literal['email', 'sms', 'url', 'auto'] = Field(
+        default='auto',
+        description="Type of scan for all items"
+    )
+
+
+class URLAnalysisResponse(BaseModel):
+    url: str
+    is_suspicious: bool
+    score: float
+    reasons: List[str]
+
+
+class BrandImpersonationResponse(BaseModel):
+    detected: bool
+    brand: Optional[str]
+    similarity_score: float
+
+
+class PhishingResponse(BaseModel):
+    is_phishing: bool
+    confidence: float
+    phishing_type: str
+    threat_level: str
+    indicators: List[str]
+    urls_analyzed: List[dict]
+    brand_impersonation: Optional[dict]
+    recommendation: str
+    details: dict
+    timestamp: str
+
 
 # Routes
 
@@ -244,6 +318,139 @@ async def get_stats():
         "status": "ready",
         "timestamp": datetime.utcnow().isoformat()
     }
+
+
+# ============================================
+# PHISHING DETECTION ENDPOINTS
+# ============================================
+
+@app.post("/predict-phishing", response_model=PhishingResponse, tags=["Phishing"])
+async def predict_phishing(request: PhishingRequest):
+    """
+    Detect phishing in text messages or URLs
+
+    - **text**: The text message or URL to analyze
+    - **scan_type**: Type of content (email, sms, url, or auto-detect)
+
+    Returns comprehensive phishing analysis with:
+    - Phishing classification and confidence
+    - Threat level (CRITICAL, HIGH, MEDIUM, LOW, NONE)
+    - Detected indicators
+    - URL analysis results
+    - Brand impersonation detection
+    - Actionable recommendations
+    """
+    if phishing_detector is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Phishing detector not available"
+        )
+
+    try:
+        result = phishing_detector.detect(request.text, request.scan_type)
+        response = result.to_dict()
+        response['timestamp'] = datetime.utcnow().isoformat()
+        return response
+    except Exception as e:
+        logger.error(f"Phishing detection error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Phishing detection error: {str(e)}"
+        )
+
+
+@app.post("/scan-url", tags=["Phishing"])
+async def scan_url(request: URLScanRequest):
+    """
+    Scan a specific URL for phishing indicators
+
+    - **url**: The URL to analyze
+
+    Returns URL-specific analysis including:
+    - Suspicious indicators
+    - TLD analysis
+    - Brand impersonation check
+    - Obfuscation detection
+    """
+    if phishing_detector is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Phishing detector not available"
+        )
+
+    try:
+        result = phishing_detector.detect(request.url, scan_type='url')
+        response = result.to_dict()
+        response['timestamp'] = datetime.utcnow().isoformat()
+        return response
+    except Exception as e:
+        logger.error(f"URL scan error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"URL scan error: {str(e)}"
+        )
+
+
+@app.post("/batch-phishing", tags=["Phishing"])
+async def batch_phishing_scan(request: BatchPhishingRequest):
+    """
+    Scan multiple texts/URLs for phishing at once
+
+    - **items**: List of texts or URLs to analyze (max 100)
+    - **scan_type**: Type of content for all items
+
+    Returns list of phishing analysis results
+    """
+    if phishing_detector is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Phishing detector not available"
+        )
+
+    try:
+        results = []
+        for item in request.items:
+            result = phishing_detector.detect(item, request.scan_type)
+            result_dict = result.to_dict()
+            result_dict['input'] = item[:100] + '...' if len(item) > 100 else item
+            results.append(result_dict)
+
+        # Summary statistics
+        phishing_count = sum(1 for r in results if r['is_phishing'])
+        threat_levels = {}
+        for r in results:
+            level = r['threat_level']
+            threat_levels[level] = threat_levels.get(level, 0) + 1
+
+        return {
+            "results": results,
+            "summary": {
+                "total": len(results),
+                "phishing_detected": phishing_count,
+                "safe": len(results) - phishing_count,
+                "threat_levels": threat_levels
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Batch phishing scan error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch phishing scan error: {str(e)}"
+        )
+
+
+@app.get("/phishing-health", tags=["Phishing"])
+async def phishing_health():
+    """Check phishing detector health status"""
+    return {
+        "status": "healthy" if phishing_detector is not None else "unavailable",
+        "detector_loaded": phishing_detector is not None,
+        "ml_enabled": phishing_detector.ml_model is not None if phishing_detector else False,
+        "transformer_enabled": phishing_detector.transformer_model is not None if phishing_detector else False,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
 
 # Run server
 if __name__ == "__main__":
