@@ -13,6 +13,11 @@ except:
     pass
 
 class SpamPredictor:
+    # Minimum confidence threshold to classify as spam
+    # Messages below this threshold are considered "ham" even if model predicts spam
+    # This reduces false positives for ambiguous messages
+    SPAM_CONFIDENCE_THRESHOLD = 0.75  # 75%
+
     def __init__(self, model_dir='model'):
         """Initialize the predictor with trained model"""
         self.model_dir = model_dir
@@ -92,34 +97,41 @@ class SpamPredictor:
         """Predict if text is spam or not"""
         # Preprocess
         processed_text = self.preprocess_text(text)
-        
+
         # Vectorize
         text_vectorized = self.vectorizer.transform([processed_text])
-        
+
         # Predict
-        prediction = self.model.predict(text_vectorized)[0]
+        raw_prediction = self.model.predict(text_vectorized)[0]
         probabilities = self.model.predict_proba(text_vectorized)[0]
-        
+
         # Extract features for explainability
         features = self.extract_features(text)
-        
+
+        # Apply confidence threshold to reduce false positives
+        # Only classify as spam if confidence exceeds threshold
+        spam_probability = float(probabilities[1])
+        is_spam = spam_probability >= self.SPAM_CONFIDENCE_THRESHOLD
+
         # Prepare result
         result = {
-            'is_spam': bool(prediction),
-            'prediction': 'spam' if prediction else 'ham',
-            'confidence': float(probabilities[1] if prediction else probabilities[0]),
-            'probability': float(probabilities[1]),  # Spam probability
+            'is_spam': is_spam,
+            'prediction': 'spam' if is_spam else 'ham',
+            'confidence': spam_probability if is_spam else float(probabilities[0]),
+            'probability': spam_probability,  # Spam probability
             'probabilities': {
                 'ham': float(probabilities[0]),
-                'spam': float(probabilities[1])
+                'spam': spam_probability
             },
             'details': {
                 'features': features,
                 'processed_text_length': len(processed_text),
-                'original_text_length': len(text)
+                'original_text_length': len(text),
+                'threshold_applied': self.SPAM_CONFIDENCE_THRESHOLD,
+                'raw_prediction': 'spam' if raw_prediction else 'ham'
             }
         }
-        
+
         return result
     
     def batch_predict(self, texts):
